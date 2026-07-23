@@ -37,6 +37,8 @@ jobs:
       - name: Configure Pages
         id: pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       # Build the release wasm bundle inside the pinned dev shell. `--public-url`
       # matches the project-pages subpath (https://<user>.github.io/<repo>/).
