@@ -470,10 +470,19 @@ fn HistoryCard() -> impl IntoView {
                                 (Some(raw), None) => (format!("{} USDT", format_usdt(raw)), "amt"),
                                 (None, _) => (String::new(), "amt"),
                             };
+                            let detail = it.detail.map(|d| view! {
+                                <div class="history-detail">
+                                    <span class="mono dim">{truncate_middle(&d)}</span>
+                                    <CopyButton text=d compact=true />
+                                </div>
+                            });
                             view! {
                                 <div class="history-item">
-                                    <span class="kind">{it.summary}</span>
-                                    <span class=amount_class>{amount_text}</span>
+                                    <div class="history-top">
+                                        <span class="kind">{it.summary}</span>
+                                        <span class=amount_class>{amount_text}</span>
+                                    </div>
+                                    {detail}
                                 </div>
                             }
                         })
@@ -486,7 +495,7 @@ fn HistoryCard() -> impl IntoView {
 }
 
 #[component]
-fn CopyButton(text: String) -> impl IntoView {
+fn CopyButton(text: String, #[prop(optional)] compact: bool) -> impl IntoView {
     let copied = RwSignal::new(false);
     let on_click = move |_| {
         let text = text.clone();
@@ -495,8 +504,9 @@ fn CopyButton(text: String) -> impl IntoView {
         });
         copied.set(true);
     };
+    let class = if compact { "ghost" } else { "secondary" };
     view! {
-        <button class="secondary" on:click=on_click>
+        <button class=class on:click=on_click>
             {move || if copied.get() { "Copied!" } else { "Copy" }}
         </button>
     }

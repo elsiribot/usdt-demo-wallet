@@ -105,6 +105,9 @@ pub struct HistoryItem {
     pub amount: Option<u64>,
     /// `Some(true)` incoming (+), `Some(false)` outgoing (−), `None` neutral.
     pub incoming: Option<bool>,
+    /// Address (deposit/withdraw) or ecash string, shown shortened with a copy
+    /// button. `None` when the operation carries nothing worth surfacing.
+    pub detail: Option<String>,
 }
 
 // ---------------------------------------------------------------------------

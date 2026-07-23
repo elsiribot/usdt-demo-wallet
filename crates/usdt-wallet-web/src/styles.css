@@ -146,17 +146,19 @@ label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .history-item {
-  display: flex;
-  justify-content: space-between;
   padding: 10px 0;
   border-bottom: 1px solid var(--border);
   font-size: 14px;
 }
 .history-item:last-child { border-bottom: none; }
+.history-top { display: flex; justify-content: space-between; align-items: baseline; }
 .history-item .kind { color: var(--text); }
 .history-item .amt { font-variant-numeric: tabular-nums; }
 .history-item .amt.pos { color: var(--accent); }
 .history-item .amt.neg { color: #f2a3a5; }
+.history-detail { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.history-detail .mono { font-size: 12px; }
+.history-detail button.ghost { font-size: 12px; padding: 2px 6px; flex: none; }
 
 .tabs { display: flex; gap: 8px; margin-bottom: 4px; }
 .tabs button { flex: 1; }

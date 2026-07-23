@@ -344,35 +344,45 @@ impl WalletRuntimeCore {
             .into_iter()
             .map(|(_key, entry)| {
                 let module = entry.operation_module_kind().to_string();
-                let (summary, amount, incoming) = match module.as_str() {
+                // `detail` is the address (deposit/withdraw) or ecash string the
+                // UI shows shortened with a copy button; `None` = nothing to show.
+                let (summary, amount, incoming, detail) = match module.as_str() {
                     "usdt" => match entry.try_meta::<UsdtOperationMeta>() {
-                        Ok(UsdtOperationMeta::Claim { amount, .. }) => {
-                            ("Deposit", Some(amount.0), Some(true))
+                        Ok(UsdtOperationMeta::Claim { account, amount }) => {
+                            ("Deposit", Some(amount.0), Some(true), Some(account.to_string()))
                         }
-                        Ok(UsdtOperationMeta::Withdraw { amount, .. }) => {
-                            ("Withdrawal", Some(amount.0), Some(false))
-                        }
-                        Err(_) => ("On-chain USDT", None, None),
+                        Ok(UsdtOperationMeta::Withdraw {
+                            recipient, amount, ..
+                        }) => (
+                            "Withdrawal",
+                            Some(amount.0),
+                            Some(false),
+                            Some(recipient.to_string()),
+                        ),
+                        Err(_) => ("On-chain USDT", None, None, None),
                     },
                     "mintv2" => match entry.try_meta::<MintOperationMeta>() {
                         Ok(MintOperationMeta::Send { ecash, .. }) => {
-                            ("Ecash sent", ecash_amount(&ecash), Some(false))
+                            let amount = ecash_amount(&ecash);
+                            ("Ecash sent", amount, Some(false), Some(ecash))
                         }
                         Ok(MintOperationMeta::Receive { ecash, .. }) => {
-                            ("Ecash received", ecash_amount(&ecash), Some(true))
+                            let amount = ecash_amount(&ecash);
+                            ("Ecash received", amount, Some(true), Some(ecash))
                         }
                         Ok(MintOperationMeta::Reissue { amount, .. }) => {
-                            ("Reissue", Some(amount.msats), None)
+                            ("Reissue", Some(amount.msats), None, None)
                         }
-                        Err(_) => ("Ecash transfer", None, None),
+                        Err(_) => ("Ecash transfer", None, None, None),
                     },
-                    _ => ("Transaction", None, None),
+                    _ => ("Transaction", None, None, None),
                 };
                 HistoryItem {
                     module,
                     summary: summary.to_string(),
                     amount,
                     incoming,
+                    detail,
                 }
             })
             .collect())
