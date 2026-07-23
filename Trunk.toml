@@ -1,0 +1,24 @@
+[build]
+target = "index.html"
+# Predictable output names so `wallet-worker.js` can `import` the glue by a
+# fixed path. Without this Trunk hashes filenames and the worker can't find it.
+filehash = false
+
+[watch]
+watch = ["crates/usdt-wallet-web/src", "index.html", "public"]
+
+[serve]
+address = "127.0.0.1"
+port = 8080
+
+[tools]
+# Match the wasm-bindgen crate pinned by the fedimint workspace.
+wasm_bindgen = "0.2.106"
+
+# Release-only: shrink the wasm with `wasm-opt -Oz` (with the feature flags
+# Trunk's built-in pass omits). `data-wasm-opt="0"` on the rust link disables
+# Trunk's own wasm-opt so this hook is the single optimizer.
+[[hooks]]
+stage = "post_build"
+command = "bash"
+command_arguments = ["scripts/wasm-opt-hook.sh"]

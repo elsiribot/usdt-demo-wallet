@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>USDT Wallet</title>
+    <meta name="theme-color" content="#0b1220" />
+    <link data-trunk rel="css" href="crates/usdt-wallet-web/src/styles.css" />
+    <link data-trunk rel="copy-file" href="crates/usdt-wallet-web/src/wallet-worker.js" />
+    <link data-trunk rel="copy-dir" href="public" />
+    <link rel="manifest" href="public/manifest.webmanifest" />
+    <link rel="icon" href="public/icon.svg" type="image/svg+xml" />
+    <!-- Single wasm binary, mounted as the page (main thread). main() branches
+         to the UI here and to the worker loop inside wallet-worker.js. -->
+    <link data-trunk rel="rust" href="crates/usdt-wallet-web/Cargo.toml" data-bin="usdt-wallet-web" data-type="main" data-wasm-opt="0" />
+  </head>
+  <body></body>
+</html>

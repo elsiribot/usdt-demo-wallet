@@ -1,0 +1,52 @@
+[workspace]
+resolver = "2"
+members = ["crates/usdt-wallet-web"]
+
+[workspace.package]
+edition = "2024"
+version = "0.1.0"
+license = "MIT"
+repository = "https://github.com/elsirion/usdt-demo-wallet"
+
+# All fedimint crates are pinned to a single commit on the `usdt-wallet` branch
+# of the elsiribot fork. See docs/FEDIMINT_BRANCH.md.
+[workspace.dependencies]
+fedimint-core = { git = "https://github.com/elsiribot/fedimint.git", rev = "ecc17458da1c470b2a984cf63a7b09337ad3c232" }
+fedimint-client = { git = "https://github.com/elsiribot/fedimint.git", rev = "ecc17458da1c470b2a984cf63a7b09337ad3c232" }
+fedimint-client-module = { git = "https://github.com/elsiribot/fedimint.git", rev = "ecc17458da1c470b2a984cf63a7b09337ad3c232" }
+fedimint-api-client = { git = "https://github.com/elsiribot/fedimint.git", rev = "ecc17458da1c470b2a984cf63a7b09337ad3c232" }
+fedimint-connectors = { git = "https://github.com/elsiribot/fedimint.git", rev = "ecc17458da1c470b2a984cf63a7b09337ad3c232" }
+fedimint-derive-secret = { git = "https://github.com/elsiribot/fedimint.git", rev = "ecc17458da1c470b2a984cf63a7b09337ad3c232" }
+fedimint-cursed-redb = { git = "https://github.com/elsiribot/fedimint.git", rev = "ecc17458da1c470b2a984cf63a7b09337ad3c232" }
+fedimint-bip39 = { git = "https://github.com/elsiribot/fedimint.git", rev = "ecc17458da1c470b2a984cf63a7b09337ad3c232" }
+fedimint-eventlog = { git = "https://github.com/elsiribot/fedimint.git", rev = "ecc17458da1c470b2a984cf63a7b09337ad3c232" }
+fedimint-mintv2-client = { git = "https://github.com/elsiribot/fedimint.git", rev = "ecc17458da1c470b2a984cf63a7b09337ad3c232" }
+fedimint-usdt-client = { git = "https://github.com/elsiribot/fedimint.git", rev = "ecc17458da1c470b2a984cf63a7b09337ad3c232" }
+fedimint-usdt-common = { git = "https://github.com/elsiribot/fedimint.git", rev = "ecc17458da1c470b2a984cf63a7b09337ad3c232" }
+
+# Versions matched to the fedimint workspace where the dependency is shared, so
+# the resolver unifies on a single copy (critical for wasm-bindgen).
+anyhow = "1.0.98"
+futures = "0.3.32"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.149"
+tracing = "0.1.44"
+getrandom = { version = "0.3.3", features = ["wasm_js"] }
+
+wasm-bindgen = "=0.2.106"
+wasm-bindgen-futures = "0.4.56"
+js-sys = "0.3.83"
+web-sys = "0.3.83"
+console_error_panic_hook = "0.1.7"
+
+leptos = { version = "0.8", features = ["csr"] }
+send_wrapper = "0.6"
+tracing-wasm = "0.2.1"
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+
+[profile.release]
+opt-level = "z"     # optimize for size
+lto = true          # fat LTO — smaller than thin
+codegen-units = 1   # better cross-crate size optimization
+strip = true        # drop symbol table / debuginfo
+panic = "abort"     # no unwinding tables (console_error_panic_hook still runs)

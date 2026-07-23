@@ -1,0 +1,12 @@
+{
+  "name": "USDT Wallet",
+  "short_name": "USDT",
+  "description": "USDT-denominated Fedimint ecash wallet with on-chain peg-in/peg-out",
+  "start_url": "../",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
