@@ -1,0 +1,63 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Allow the deploy job to publish to Pages.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; let a newer push cancel an in-progress run.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Nix store cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          # The git-pinned fedimint tree is large; cache it across runs.
+          cache-on-failure: true
+
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      # Build the release wasm bundle inside the pinned dev shell. `--public-url`
+      # matches the project-pages subpath (https://<user>.github.io/<repo>/).
+      # The release profile + post-build wasm-opt hook run automatically.
+      - name: Build
+        run: |
+          nix develop --command \
+            trunk build --release --public-url "${{ steps.pages.outputs.base_path }}/"
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
