@@ -31,6 +31,7 @@ pub enum Command {
     IsJoined,
     GetBalance,
     ReceiveOnchain,
+    RescanDeposits,
     WithdrawQuote { amount: u64 },
     WithdrawOnchain { recipient: String, amount: u64, max_fee: u64 },
     EcashSend { amount: u64 },
@@ -80,6 +81,14 @@ enum WorkerOut {
 pub struct ConnectInfo {
     pub storage_ok: bool,
     pub storage_notice: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct RescanInfo {
+    /// Credited deposit accounts the seed-rescan rediscovered.
+    pub recovered: usize,
+    /// Raw USDT newly claimed into the balance by this rescan.
+    pub claimed: u64,
 }
 
 #[derive(Deserialize, Clone)]
@@ -239,6 +248,11 @@ impl WalletRuntime {
             .value)
     }
 
+    /// Seed-rescan for credited deposits and claim them; `(recovered, claimed)`.
+    pub async fn rescan_deposits(&self) -> anyhow::Result<RescanInfo> {
+        self.request(Command::RescanDeposits).await
+    }
+
     pub async fn withdraw_quote(&self, amount: u64) -> anyhow::Result<QuoteInfo> {
         self.request(Command::WithdrawQuote { amount }).await
     }
@@ -369,6 +383,10 @@ async fn dispatch(command: Command) -> anyhow::Result<serde_json::Value> {
         Command::ReceiveOnchain => {
             let address = core()?.receive_onchain().await?;
             Ok(json!({ "value": address }))
+        }
+        Command::RescanDeposits => {
+            let (recovered, claimed) = core()?.rescan_deposits().await?;
+            Ok(json!({ "recovered": recovered, "claimed": claimed }))
         }
         Command::WithdrawQuote { amount } => {
             let (max_fee, valid_blocks) = core()?.withdraw_quote(amount).await?;

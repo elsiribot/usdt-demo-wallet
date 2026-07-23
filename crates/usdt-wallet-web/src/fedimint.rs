@@ -39,6 +39,10 @@ use crate::wallet_runtime::{HistoryItem, WorkerEvent, emit_event};
 
 const DB_FILE: &str = "wallet.redb";
 
+/// Consecutive-miss gap the deposit rescan walks before giving up. Seed indices
+/// are handed out densely (one per `allocate_deposit`), so a small gap suffices.
+const DEPOSIT_RESCAN_GAP_LIMIT: u64 = 20;
+
 /// DB key-prefixes in the single OPFS-backed database. The Fedimint client owns
 /// the `ClientDatabase` sub-prefix; the wallet mnemonic lives under its own.
 #[repr(u8)]
@@ -229,6 +233,40 @@ impl WalletRuntimeCore {
         });
 
         Ok(address_str)
+    }
+
+    /// One-shot deposit recovery: seed-rescan the federation for deposits it has
+    /// already credited (e.g. ones that arrived after a reload, when the live
+    /// auto-watch task was gone), re-store their claim keys, and claim each with
+    /// a nonzero claimable balance into ecash. Returns `(recovered, claimed_raw)`
+    /// — accounts found and total newly-claimed amount.
+    ///
+    /// This can never claim an unconfirmed deposit: the federation only advances
+    /// an account's `claimable` after the deposit clears its confirmation depth
+    /// and the guardians agree, and we only claim where `claimable > 0`. A
+    /// still-confirming deposit simply isn't found yet — rerun once it clears.
+    pub async fn rescan_deposits(&self) -> anyhow::Result<(usize, u64)> {
+        let client = self.client()?;
+        let usdt = client.get_first_module::<UsdtClientModule>()?;
+
+        let summary = usdt.recover_deposits(DEPOSIT_RESCAN_GAP_LIMIT).await?;
+
+        let mut claimed = 0u64;
+        for account in &summary.accounts {
+            if account.claimable.0 == 0 {
+                continue;
+            }
+            match usdt.claim(account.claim_pk).await {
+                Ok(amount) => claimed = claimed.saturating_add(amount.0),
+                Err(e) => tracing::warn!("claim of deposit {} failed: {e:#}", account.account),
+            }
+        }
+
+        if claimed > 0 {
+            emit_event(WorkerEvent::BalanceChanged);
+        }
+
+        Ok((summary.recovered, claimed))
     }
 
     // --- peg-out (withdrawal) ---

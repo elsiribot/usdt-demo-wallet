@@ -152,20 +152,59 @@ fn Home() -> impl IntoView {
 #[component]
 fn ReceiveCard() -> impl IntoView {
     let runtime = expect_context::<WalletRuntime>();
+    let refresh = expect_context::<Refresh>();
     let address = RwSignal::new(None::<String>);
     let busy = RwSignal::new(false);
     let err = RwSignal::new(None::<String>);
+    let checking = RwSignal::new(false);
+    let check_msg = RwSignal::new(None::<String>);
 
-    let on_reveal = move |_| {
-        busy.set(true);
+    let on_reveal = {
+        let runtime = runtime.clone();
+        move |_| {
+            busy.set(true);
+            err.set(None);
+            let runtime = runtime.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                match runtime.receive_onchain().await {
+                    Ok(addr) => address.set(Some(addr)),
+                    Err(e) => err.set(Some(format!("{e}"))),
+                }
+                busy.set(false);
+            });
+        }
+    };
+
+    // One-shot rescan: claim any deposit the federation has already credited
+    // (e.g. one that landed after a reload, when the live auto-watch was gone).
+    let on_check = move |_| {
+        checking.set(true);
+        check_msg.set(None);
         err.set(None);
         let runtime = runtime.clone();
         wasm_bindgen_futures::spawn_local(async move {
-            match runtime.receive_onchain().await {
-                Ok(addr) => address.set(Some(addr)),
+            match runtime.rescan_deposits().await {
+                Ok(info) => {
+                    let msg = if info.claimed > 0 {
+                        format!(
+                            "Claimed {} USDT from {} deposit{}.",
+                            format_usdt(info.claimed),
+                            info.recovered,
+                            if info.recovered == 1 { "" } else { "s" },
+                        )
+                    } else if info.recovered > 0 {
+                        "Deposits found were already claimed — nothing new.".to_string()
+                    } else {
+                        "No confirmed deposits yet — if you just sent one, check again \
+                         in a moment."
+                            .to_string()
+                    };
+                    check_msg.set(Some(msg));
+                    refresh.0.update(|n| *n += 1);
+                }
                 Err(e) => err.set(Some(format!("{e}"))),
             }
-            busy.set(false);
+            checking.set(false);
         });
     };
 
@@ -187,6 +226,11 @@ fn ReceiveCard() -> impl IntoView {
                     <div class="status waiting"><span class="spin"></span>"Waiting for deposit…"</div>
                 }.into_any(),
             }}
+            <p class="hint">"Sent a deposit in an earlier session? Claim it here."</p>
+            <button class="secondary" on:click=on_check disabled=move || checking.get()>
+                {move || if checking.get() { "Checking…" } else { "Check for deposits" }}
+            </button>
+            {move || check_msg.get().map(|m| view! { <div class="status info">{m}</div> })}
             {move || err.get().map(|e| view! { <div class="status error">{e}</div> })}
         </div>
     }
