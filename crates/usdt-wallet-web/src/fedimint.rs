@@ -27,7 +27,9 @@ use fedimint_core::invite_code::InviteCode;
 use fedimint_bip39::Bip39RootSecretStrategy;
 use fedimint_cursed_redb::MemAndRedb;
 use fedimint_derive_secret::{ChildId, DerivableSecret};
-use fedimint_mintv2_client::{ECash, MintClientInit, MintClientModule, MintOperationMeta};
+use fedimint_mintv2_client::{
+    ECash, FinalReceiveOperationState, MintClientInit, MintClientModule, MintOperationMeta,
+};
 use fedimint_usdt_client::{UsdtClientInit, UsdtClientModule, UsdtOperationMeta};
 use fedimint_usdt_common::{EvmAddress, USDT_UNIT, UsdtAmount};
 
@@ -260,10 +262,19 @@ impl WalletRuntimeCore {
         let mint = client.get_first_module::<MintClientModule>()?;
         let ecash: ECash = base32::decode_prefixed(FEDIMINT_PREFIX, ecash)
             .context("could not parse ecash string")?;
-        mint.receive(ecash, serde_json::Value::Null)
+        let operation_id = mint
+            .receive(ecash, serde_json::Value::Null)
             .await
             .map_err(|e| anyhow::anyhow!("{e}"))?;
-        Ok(())
+        // `receive` returns as soon as the reissue is submitted; wait for it to
+        // finalize so the balance reflects the redeemed notes before we return
+        // (the UI refreshes the balance on success).
+        match mint.await_final_receive_operation_state(operation_id).await? {
+            FinalReceiveOperationState::Success => Ok(()),
+            FinalReceiveOperationState::Rejected => {
+                anyhow::bail!("ecash was rejected (already spent?)")
+            }
+        }
     }
 
     // --- history ---
