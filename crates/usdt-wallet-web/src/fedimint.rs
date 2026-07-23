@@ -27,6 +27,7 @@ use fedimint_core::invite_code::InviteCode;
 use fedimint_bip39::Bip39RootSecretStrategy;
 use fedimint_cursed_redb::MemAndRedb;
 use fedimint_derive_secret::{ChildId, DerivableSecret};
+use futures::StreamExt as _;
 use fedimint_mintv2_client::{
     ECash, FinalReceiveOperationState, MintClientInit, MintClientModule, MintOperationMeta,
 };
@@ -110,6 +111,21 @@ impl WalletRuntimeCore {
             .context("not joined to a federation")
     }
 
+    /// Store the client and start watching its USDT balance. The balance-change
+    /// stream is the source of truth for UI refreshes — it fires whenever notes
+    /// are added or removed (receive, send, deposit-claim, withdrawal), so the
+    /// balance never depends on any single operation's completion timing.
+    fn set_client(&self, client: ClientHandleArc) {
+        let watch = client.clone();
+        wasm_bindgen_futures::spawn_local(async move {
+            let mut stream = watch.subscribe_balance_changes(USDT_UNIT).await;
+            while stream.next().await.is_some() {
+                emit_event(WorkerEvent::BalanceChanged);
+            }
+        });
+        *self.client.borrow_mut() = Some(client);
+    }
+
     /// Join a federation from an invite code (idempotent).
     pub async fn join(&self, invite_code: &str) -> anyhow::Result<()> {
         if self.client.borrow().is_some() {
@@ -133,7 +149,7 @@ impl WalletRuntimeCore {
                 .await?,
         );
 
-        *self.client.borrow_mut() = Some(client);
+        self.set_client(client);
         Ok(())
     }
 
@@ -159,7 +175,7 @@ impl WalletRuntimeCore {
                 .await?,
         );
 
-        *self.client.borrow_mut() = Some(client);
+        self.set_client(client);
         Ok(())
     }
 

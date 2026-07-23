@@ -50,6 +50,8 @@ struct RequestEnvelope {
 pub enum WorkerEvent {
     /// A watched deposit was credited and claimed into ecash.
     DepositCredited,
+    /// The spendable USDT balance changed (any cause).
+    BalanceChanged,
 }
 
 #[derive(Serialize, Deserialize)]
